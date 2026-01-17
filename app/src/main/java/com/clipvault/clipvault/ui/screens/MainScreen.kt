@@ -1,5 +1,7 @@
 package com.clipvault.clipvault.ui.screens
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircle
@@ -9,24 +11,26 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.clipvault.clipvault.ui.theme.BrightBlue
+import com.clipvault.clipvault.ui.theme.White
 
 @Composable
 fun MainScreen(
     userId: Int,
     onLogout: () -> Unit,
-    // UPDATE BAGIAN INI (Jadi 7 Parameter)
     onVideoClick: (Int, String, String, String, String, Long, String, String) -> Unit,
     onEditProfileClick: () -> Unit
 ) {
     val navController = rememberNavController()
 
-    // Daftar Menu Bawah
     val items = listOf(
         BottomNavItem("Home", "home", Icons.Default.Home),
         BottomNavItem("Search", "search", Icons.Default.Search),
@@ -37,17 +41,43 @@ fun MainScreen(
     Scaffold(
         bottomBar = {
             NavigationBar(
-                containerColor = Color.White,
-                contentColor = Color(0xFF00897B)
+                containerColor = White,
+                contentColor = BrightBlue,
+                tonalElevation = 8.dp
             ) {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
 
                 items.forEach { item ->
+                    val isSelected = currentRoute == item.route
+
+                    val scale by animateFloatAsState(
+                        targetValue = if (isSelected) 1.15f else 1f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessLow
+                        ),
+                        label = "icon_scale_${item.route}"
+                    )
+
                     NavigationBarItem(
-                        icon = { Icon(item.icon, contentDescription = item.title) },
-                        label = { Text(item.title) },
-                        selected = currentRoute == item.route,
+                        icon = {
+                            Icon(
+                                item.icon,
+                                contentDescription = item.title,
+                                modifier = Modifier.scale(scale)
+                            )
+                        },
+                        label = {
+                            AnimatedVisibility(
+                                visible = isSelected,
+                                enter = fadeIn() + expandVertically(),
+                                exit = fadeOut() + shrinkVertically()
+                            ) {
+                                Text(item.title)
+                            }
+                        },
+                        selected = isSelected,
                         onClick = {
                             navController.navigate(item.route) {
                                 popUpTo(navController.graph.findStartDestination().id) {
@@ -58,9 +88,11 @@ fun MainScreen(
                             }
                         },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Color(0xFF00897B),
-                            selectedTextColor = Color(0xFF00897B),
-                            indicatorColor = Color(0xFF00897B).copy(alpha = 0.1f)
+                            selectedIconColor = BrightBlue,
+                            selectedTextColor = BrightBlue,
+                            unselectedIconColor = Color.Gray,
+                            unselectedTextColor = Color.Gray,
+                            indicatorColor = BrightBlue.copy(alpha = 0.15f)
                         )
                     )
                 }
@@ -72,27 +104,23 @@ fun MainScreen(
             startDestination = "home",
             modifier = Modifier.padding(innerPadding)
         ) {
-            // === 1. HOME SCREEN ===
             composable("home") {
                 HomeScreen(
-                    userId = userId, // PERBAIKAN: Masukkan userId
+                    userId = userId,
                     onVideoClick = onVideoClick,
-                    // Tombol-tombol di dalam Home kita sambungkan ke Tab Bawah
                     onNavigateToUpload = { navController.navigate("upload") },
                     onSearchClick = { navController.navigate("search") },
                     onProfileClick = { navController.navigate("profile") }
                 )
             }
 
-            // === 2. SEARCH SCREEN ===
             composable("search") {
                 SearchScreen(
                     onBack = { navController.navigate("home") },
-                    onVideoClick = onVideoClick // Teruskan Function7
+                    onVideoClick = onVideoClick
                 )
             }
 
-            // === 3. UPLOAD SCREEN (Tidak ada perubahan) ===
             composable("upload") {
                 UploadScreen(
                     userId = userId,
@@ -100,12 +128,11 @@ fun MainScreen(
                 )
             }
 
-            // === 4. PROFILE SCREEN ===
             composable("profile") {
                 ProfileScreen(
                     userId = userId,
                     onBack = { },
-                    onVideoClick = onVideoClick, // Teruskan Function7
+                    onVideoClick = onVideoClick,
                     onEditClick = onEditProfileClick,
                     onLogout = onLogout
                 )
@@ -113,6 +140,7 @@ fun MainScreen(
         }
     }
 }
+
 data class BottomNavItem(
     val title: String,
     val route: String,
