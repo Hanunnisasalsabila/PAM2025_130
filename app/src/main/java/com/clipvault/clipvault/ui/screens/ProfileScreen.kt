@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -18,10 +19,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex // Import zIndex buat maksa di layer paling atas
+import coil.ImageLoader
+import coil.compose.AsyncImage
+import coil.decode.VideoFrameDecoder
+import coil.request.ImageRequest
+import coil.request.videoFrameMillis
 import com.clipvault.clipvault.data.RetrofitClient
 import com.clipvault.clipvault.data.model.AssetItem
 import com.clipvault.clipvault.data.model.AuthResponse
@@ -31,14 +40,6 @@ import com.clipvault.clipvault.ui.theme.*
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
-import androidx.compose.material.icons.filled.ExitToApp
-import coil.compose.AsyncImage
-import androidx.compose.ui.layout.ContentScale
-import coil.ImageLoader
-import coil.decode.VideoFrameDecoder
-import coil.request.ImageRequest
-import coil.request.videoFrameMillis
-import androidx.compose.ui.text.style.TextOverflow
 
 @Composable
 fun ProfileScreen(
@@ -62,9 +63,7 @@ fun ProfileScreen(
 
     val imageLoader = remember {
         ImageLoader.Builder(context)
-            .components {
-                add(VideoFrameDecoder.Factory())
-            }
+            .components { add(VideoFrameDecoder.Factory()) }
             .crossfade(true)
             .build()
     }
@@ -96,6 +95,8 @@ fun ProfileScreen(
         }
     } else {
         Column(modifier = Modifier.fillMaxSize().background(OffWhite)) {
+
+            // === HEADER PROFILE ===
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -104,10 +105,14 @@ fun ProfileScreen(
                             colors = listOf(BrightBlue, DeepPurple)
                         )
                     )
-                    .padding(24.dp),
-                contentAlignment = Alignment.Center
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                // 1. KONTEN PROFILE (Ditulis duluan biar jadi layer bawah)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(top = 60.dp, bottom = 24.dp)
+                ) {
                     Box(
                         modifier = Modifier
                             .size(100.dp)
@@ -204,15 +209,26 @@ fun ProfileScreen(
                     }
                 }
 
-                Button(
+                // 2. TOMBOL KEMBALI (DIPINDAH KE SINI: LAYER PALING ATAS)
+                // Ditambah modifier .zIndex(10f) biar maksa paling depan
+                IconButton(
                     onClick = onBack,
-                    colors = ButtonDefaults.buttonColors(containerColor = White.copy(alpha = 0.2f)),
-                    modifier = Modifier.align(Alignment.TopStart).offset(x = -10.dp, y = -10.dp)
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(16.dp)
+                        .statusBarsPadding()
+                        .zIndex(10f) // KUNCI UTAMA: Layer Paling Atas
                 ) {
-                    Text("←", color = White)
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Kembali",
+                        tint = White,
+                        modifier = Modifier.size(28.dp)
+                    )
                 }
             }
 
+            // === LIST KOLEKSI SAYA ===
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
                     "Koleksi Saya",
@@ -231,7 +247,8 @@ fun ProfileScreen(
                     items(userAssets) { asset ->
                         Card(
                             modifier = Modifier.height(160.dp),
-                            colors = CardDefaults.cardColors(containerColor = White)
+                            colors = CardDefaults.cardColors(containerColor = White),
+                            elevation = CardDefaults.cardElevation(2.dp)
                         ) {
                             Box(modifier = Modifier.fillMaxSize()) {
                                 val cleanPath = asset.file_path.replace("\\", "/")
@@ -273,7 +290,8 @@ fun ProfileScreen(
                                         color = White,
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold,
-                                        maxLines = 1
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                 }
 
@@ -301,6 +319,7 @@ fun ProfileScreen(
         }
     }
 
+    // ... (Dialog logic tetap sama di bawah) ...
     if (showDeleteDialog && assetToDeleteId != null) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },

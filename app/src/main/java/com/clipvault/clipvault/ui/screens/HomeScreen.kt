@@ -10,12 +10,17 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -80,20 +85,13 @@ fun HomeScreen(
 
     Scaffold(
         topBar = {
-            // === BAGIAN INI SUDAH DIBERSIHKAN ===
+            // === ANIMATED TOP BAR ===
             CenterAlignedTopAppBar(
                 title = {
-                    Text(
-                        "ClipVault",
-                        fontWeight = FontWeight.ExtraBold,
-                        color = White,
-                        letterSpacing = 1.sp,
-                        fontSize = 22.sp
-                    )
+                    AnimatedTitleText()
                 },
-                // Block 'actions = { ... }' SUDAH DIHAPUS DISINI
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = BrightBlue // Tetap pakai warna biru logo barumu
+                    containerColor = BrightBlue
                 )
             )
         }
@@ -112,7 +110,8 @@ fun HomeScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = BrightBlue)
+                    // === CUSTOM LOADING ANIMATION ===
+                    AnimatedLoadingIndicator()
                 }
             } else {
                 LazyVerticalGrid(
@@ -146,6 +145,91 @@ fun HomeScreen(
 }
 
 @Composable
+private fun AnimatedTitleText() {
+    val infiniteTransition = rememberInfiniteTransition(label = "title")
+
+    val shimmer by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmer"
+    )
+
+    Text(
+        "ClipVault",
+        fontWeight = FontWeight.ExtraBold,
+        color = White,
+        letterSpacing = 1.sp,
+        fontSize = 22.sp,
+        modifier = Modifier
+            .alpha(0.9f + shimmer * 0.1f)
+            .scale(0.98f + shimmer * 0.02f)
+    )
+}
+
+@Composable
+private fun AnimatedLoadingIndicator() {
+    val infiniteTransition = rememberInfiniteTransition(label = "loading")
+
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "rotation"
+    )
+
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 0.8f,
+        targetValue = 1.2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "scale"
+    )
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.size(100.dp)
+    ) {
+        // Outer ring
+        Box(
+            modifier = Modifier
+                .size(80.dp)
+                .rotate(rotation)
+                .background(
+                    brush = Brush.sweepGradient(
+                        colors = listOf(
+                            BrightBlue,
+                            ElectricCyan,
+                            Color.Transparent,
+                            Color.Transparent
+                        )
+                    ),
+                    shape = CircleShape
+                )
+        )
+
+        // Inner pulsing circle
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .scale(scale)
+                .background(
+                    color = BrightBlue.copy(alpha = 0.5f),
+                    shape = CircleShape
+                )
+        )
+    }
+}
+
+@Composable
 private fun AnimatedVideoCard(
     asset: AssetItem,
     serverIp: String,
@@ -155,10 +239,27 @@ private fun AnimatedVideoCard(
     onClick: () -> Unit
 ) {
     var isPressed by remember { mutableStateOf(false) }
+    var isHovered by remember { mutableStateOf(false) }
+
+    // Press animation
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.95f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        targetValue = when {
+            isPressed -> 0.92f
+            isHovered -> 1.03f
+            else -> 1f
+        },
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
         label = "card_press"
+    )
+
+    // Elevation animation
+    val elevation by animateDpAsState(
+        targetValue = if (isHovered) 8.dp else 4.dp,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label = "elevation"
     )
 
     val cleanPath = asset.file_path.replace("\\", "/")
@@ -168,14 +269,23 @@ private fun AnimatedVideoCard(
         visible = isVisible,
         enter = fadeIn(
             animationSpec = tween(
-                durationMillis = 400,
-                delayMillis = 50 * index
+                durationMillis = 500,
+                delayMillis = 40 * index,
+                easing = FastOutSlowInEasing
             )
         ) + slideInVertically(
             initialOffsetY = { 100 },
             animationSpec = tween(
-                durationMillis = 400,
-                delayMillis = 50 * index
+                durationMillis = 500,
+                delayMillis = 40 * index,
+                easing = FastOutSlowInEasing
+            )
+        ) + scaleIn(
+            initialScale = 0.8f,
+            animationSpec = tween(
+                durationMillis = 500,
+                delayMillis = 40 * index,
+                easing = FastOutSlowInEasing
             )
         )
     ) {
@@ -191,31 +301,57 @@ private fun AnimatedVideoCard(
                     isPressed = true
                     onClick()
                 },
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = elevation),
             colors = CardDefaults.cardColors(containerColor = White),
             shape = RoundedCornerShape(16.dp)
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(fullUrl)
-                        .videoFrameMillis(2000)
-                        .build(),
-                    imageLoader = imageLoader,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(140.dp)
-                        .background(DeepPurple.copy(alpha = 0.1f))
-                )
+                // Video thumbnail with shimmer effect
+                Box {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(fullUrl)
+                            .videoFrameMillis(2000)
+                            .build(),
+                        imageLoader = imageLoader,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(140.dp)
+                            .background(DeepPurple.copy(alpha = 0.1f))
+                    )
 
+                    // Gradient overlay for better text visibility
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(140.dp)
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color.Transparent,
+                                        Color.Black.copy(alpha = 0.3f)
+                                    )
+                                )
+                            )
+                    )
+                }
+
+                // Info box with enhanced styling
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .fillMaxWidth()
                         .height(60.dp)
-                        .background(White)
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    White.copy(alpha = 0.95f),
+                                    White
+                                )
+                            )
+                        )
                         .padding(8.dp)
                 ) {
                     Column {
@@ -227,12 +363,22 @@ private fun AnimatedVideoCard(
                             overflow = TextOverflow.Ellipsis,
                             color = DeepPurple
                         )
-                        Text(
-                            text = "@${asset.username}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MediumGray,
-                            maxLines = 1
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(4.dp)
+                                    .background(BrightBlue, CircleShape)
+                            )
+                            Text(
+                                text = "@${asset.username}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MediumGray,
+                                maxLines = 1
+                            )
+                        }
                     }
                 }
             }
@@ -241,7 +387,7 @@ private fun AnimatedVideoCard(
 
     LaunchedEffect(isPressed) {
         if (isPressed) {
-            delay(100)
+            delay(150)
             isPressed = false
         }
     }
